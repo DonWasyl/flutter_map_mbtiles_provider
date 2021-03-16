@@ -1,0 +1,21 @@
+name: flutter_map_mbtiles_provider
+description: MBTilesProvider was originally implemented as part of flutter_map package
+version: 0.1.0
+repository: https://github.com/DonWasyl/flutter_map_mbtiles_provider
+
+environment:
+  sdk: ">=2.10.0 <3.0.0"
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_map: ^0.11.0
+  path_provider: ^2.0.1
+  sqflite: ^2.0.0+3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
