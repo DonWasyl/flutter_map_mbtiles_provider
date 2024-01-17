@@ -1,23 +1,19 @@
-library flutter_map_mbtiles_provider;
-
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
-// import 'package:flutter_map/src/layer/tile_provider/tile_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 class MBTilesImageProvider extends TileProvider {
-  final String asset;
-  final File mbtilesFile;
+  final String? asset;
+  final File? mbtilesFile;
 
-  Future<Database> database;
-  Database _loadedDb;
+  late Future<Database> database;
+  Database? _loadedDb;
   bool isDisposed = false;
 
   MBTilesImageProvider._({this.asset, this.mbtilesFile}) {
@@ -35,19 +31,19 @@ class MBTilesImageProvider extends TileProvider {
       _loadedDb = await openDatabase(file.path);
 
       if (isDisposed) {
-        await _loadedDb.close();
+        await _loadedDb!.close();
         _loadedDb = null;
         throw Exception('Tileprovider is already disposed');
       }
     }
 
-    return _loadedDb;
+    return _loadedDb!;
   }
 
   @override
   void dispose() {
     if (_loadedDb != null) {
-      _loadedDb.close();
+      _loadedDb!.close();
       _loadedDb = null;
     }
     isDisposed = true;
@@ -55,37 +51,37 @@ class MBTilesImageProvider extends TileProvider {
 
   Future<File> copyFileFromAssets() async {
     var tempDir = await getTemporaryDirectory();
-    var filename = asset.split('/').last;
+    var filename = asset!.split('/').last;
     var file = File('${tempDir.path}/$filename');
 
-    var data = await rootBundle.load(asset);
+    var data = await rootBundle.load(asset!);
     file.writeAsBytesSync(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes), flush: true);
     return file;
   }
 
   @override
-  ImageProvider getImage(Coords<num> coords, TileLayerOptions options) {
+  ImageProvider getImage(TileCoordinates coords, TileLayer options) {
     var x = coords.x.round();
     var y = options.tms ? invertY(coords.y.round(), coords.z.round()) : coords.y.round();
     var z = coords.z.round();
 
-    return MBTileImage(
-      database,
-      Coords<int>(x, y)..z = z,
-      mbtilesFile?.path ?? asset,
-    );
+    return MBTileImage(database, TileCoordinates(x, y, z), mbtilesFile?.path ?? asset!);
+  }
+
+  int invertY(int y, int z) {
+    return ((1 << z) - 1) - y;
   }
 }
 
 class MBTileImage extends ImageProvider<MBTileImage> {
   final Future<Database> database;
-  final Coords<int> coords;
+  final TileCoordinates coords;
   final String filePath;
 
   MBTileImage(this.database, this.coords, this.filePath);
 
   @override
-  ImageStreamCompleter load(MBTileImage key, decode) {
+  ImageStreamCompleter loadImage(MBTileImage key, decode) {
     return MultiFrameImageStreamCompleter(
         codec: _loadAsync(key),
         scale: 1,
@@ -103,12 +99,13 @@ class MBTileImage extends ImageProvider<MBTileImage> {
         'where zoom_level = ${coords.z} AND '
         'tile_column = ${coords.x} AND '
         'tile_row = ${coords.y} limit 1');
+
     final Uint8List bytes = result.isNotEmpty ? result.first['tile_data'] : null;
 
     if (bytes == null) {
       return Future<Codec>.error('Failed to load tile for coords: $coords');
     }
-    return await PaintingBinding.instance.instantiateImageCodec(bytes);
+    return await instantiateImageCodec(bytes);
   }
 
   @override
